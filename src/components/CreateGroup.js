@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import moment from 'moment-jalaali';
 
 function CreateGroup() {
   const navigate = useNavigate();
@@ -8,18 +9,41 @@ function CreateGroup() {
     description: '',
     budget: '',
     currency: 'TOMAN',
-    drawDate: ''
+    drawDate: moment().add(1, 'month').format('YYYY-MM-DD')
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Check if admin is logged in
   useEffect(() => {
+    checkAuth();
+  }, []);
+
+  const checkAuth = async () => {
     const token = localStorage.getItem('adminToken');
     if (!token) {
       navigate('/admin/login');
+      return;
     }
-  }, [navigate]);
+
+    try {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/admin/profile`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        localStorage.removeItem('adminToken');
+        localStorage.removeItem('adminInfo');
+        navigate('/admin/login');
+      }
+    } catch (error) {
+      console.error('Auth check error:', error);
+      localStorage.removeItem('adminToken');
+      localStorage.removeItem('adminInfo');
+      navigate('/admin/login');
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -59,7 +83,8 @@ function CreateGroup() {
           navigate('/admin/login');
           throw new Error('نشست شما منقضی شده است. لطفا دوباره وارد شوید');
         }
-        throw new Error('خطا در ایجاد گروه');
+        const data = await response.json();
+        throw new Error(data.error || 'خطا در ایجاد گروه');
       }
 
       const data = await response.json();
@@ -73,102 +98,106 @@ function CreateGroup() {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <h2 className="text-3xl font-bold mb-6">ایجاد گروه کادو</h2>
-      
-      {error && (
-        <div className="mb-6 bg-red-50 border-r-4 border-red-400 p-4">
-          <p className="text-red-700">{error}</p>
-        </div>
-      )}
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <h2 className="text-2xl font-bold mb-6">ایجاد گروه جدید</h2>
 
-      <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-md p-6">
-        <div className="mb-4">
-          <label className="block text-gray-700 text-sm font-bold mb-2">
-            نام گروه
-          </label>
-          <input
-            type="text"
-            name="name"
-            value={formData.name}
-            onChange={handleChange}
-            required
-            className="w-full p-2 border rounded"
-            placeholder="کریسمس ۱۴۰۳"
-          />
-        </div>
+        {error && (
+          <div className="mb-4 bg-red-50 border-r-4 border-red-400 p-4">
+            <p className="text-red-700">{error}</p>
+          </div>
+        )}
 
-        <div className="mb-4">
-          <label className="block text-gray-700 text-sm font-bold mb-2">
-            توضیحات
-          </label>
-          <textarea
-            name="description"
-            value={formData.description}
-            onChange={handleChange}
-            className="w-full p-2 border rounded"
-            rows="3"
-            placeholder="توضیحات گروه کادو را وارد کنید"
-          />
-        </div>
-
-        <div className="grid grid-cols-2 gap-4 mb-4">
+        <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label className="block text-gray-700 text-sm font-bold mb-2">
-              بودجه
+            <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+              نام گروه
             </label>
             <input
-              type="number"
-              name="budget"
-              value={formData.budget}
-              onChange={handleChange}
+              type="text"
+              id="name"
+              name="name"
               required
-              min="0"
-              step="1000"
-              className="w-full p-2 border rounded"
-              placeholder="۵۰۰,۰۰۰"
+              value={formData.name}
+              onChange={handleChange}
+              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-[#00B100] focus:border-[#00B100]"
             />
           </div>
 
           <div>
-            <label className="block text-gray-700 text-sm font-bold mb-2">
-              واحد پول
+            <label htmlFor="description" className="block text-sm font-medium text-gray-700">
+              توضیحات
             </label>
-            <select
-              name="currency"
-              value={formData.currency}
+            <textarea
+              id="description"
+              name="description"
+              rows="3"
+              value={formData.description}
               onChange={handleChange}
-              className="w-full p-2 border rounded"
-            >
-              <option value="TOMAN">تومان</option>
-              <option value="RIAL">ریال</option>
-            </select>
+              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-[#00B100] focus:border-[#00B100]"
+            />
           </div>
-        </div>
 
-        <div className="mb-6">
-          <label className="block text-gray-700 text-sm font-bold mb-2">
-            تاریخ قرعه‌کشی
-          </label>
-          <input
-            type="date"
-            name="drawDate"
-            value={formData.drawDate}
-            onChange={handleChange}
-            required
-            className="w-full p-2 border rounded"
-          />
-        </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="budget" className="block text-sm font-medium text-gray-700">
+                بودجه
+              </label>
+              <input
+                type="number"
+                id="budget"
+                name="budget"
+                required
+                value={formData.budget}
+                onChange={handleChange}
+                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-[#00B100] focus:border-[#00B100]"
+              />
+            </div>
 
-        <button
-          type="submit"
-          disabled={loading}
-          className={`w-full bg-red-600 text-white py-2 px-4 rounded hover:bg-red-700 ${
-            loading ? 'opacity-50 cursor-not-allowed' : ''
-          }`}
-        >
-          {loading ? 'در حال ایجاد...' : 'ایجاد گروه'}
-        </button>
-      </form>
+            <div>
+              <label htmlFor="currency" className="block text-sm font-medium text-gray-700">
+                واحد پول
+              </label>
+              <select
+                id="currency"
+                name="currency"
+                value={formData.currency}
+                onChange={handleChange}
+                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-[#00B100] focus:border-[#00B100]"
+              >
+                <option value="TOMAN">تومان</option>
+                <option value="USD">دلار</option>
+                <option value="EUR">یورو</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label htmlFor="drawDate" className="block text-sm font-medium text-gray-700">
+              تاریخ قرعه‌کشی
+            </label>
+            <input
+              type="date"
+              id="drawDate"
+              name="drawDate"
+              required
+              value={formData.drawDate}
+              onChange={handleChange}
+              min={moment().format('YYYY-MM-DD')}
+              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-[#00B100] focus:border-[#00B100]"
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className={`w-full bg-[#00B100] text-white p-3 rounded-md hover:bg-[#009100] transition-colors ${
+              loading ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
+          >
+            {loading ? 'در حال ایجاد گروه...' : 'ایجاد گروه'}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }

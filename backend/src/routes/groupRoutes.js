@@ -5,44 +5,27 @@ const Participant = require('../models/Participant');
 const { protect } = require('../middleware/auth');
 const { sendAssignmentEmail } = require('../utils/email');
 
-// Create a new Secret Santa group (admin only)
+// Create a new group
 router.post('/', protect, async (req, res) => {
   try {
     const group = await Group.create({
       ...req.body,
-      adminId: req.admin.id
+      ownerId: req.user.id
     });
     res.status(201).json(group);
   } catch (error) {
+    console.error('Group creation error:', error);
     res.status(400).json({ error: error.message });
   }
 });
 
-// Get all groups (admin only)
-router.get('/', protect, async (req, res) => {
+// Get user's groups
+router.get('/my-groups', protect, async (req, res) => {
   try {
     const groups = await Group.findAll({
-      where: { adminId: req.admin.id }
+      where: { ownerId: req.user.id },
+      order: [['createdAt', 'DESC']]
     });
-    res.json(groups);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Get groups by participant email
-router.get('/organizer/:email', async (req, res) => {
-  try {
-    const participants = await Participant.findAll({
-      where: { email: req.params.email },
-      include: [{
-        model: Group,
-        attributes: ['id', 'name', 'description', 'budget', 'currency', 'status', 'drawDate']
-      }]
-    });
-
-    // Extract unique groups from participants
-    const groups = participants.map(p => p.Group).filter(g => g !== null);
     res.json(groups);
   } catch (error) {
     console.error('Error fetching groups:', error);
@@ -50,13 +33,80 @@ router.get('/organizer/:email', async (req, res) => {
   }
 });
 
-// Perform the Secret Santa draw for a group (admin only)
+// Get a specific group with its participants
+router.get('/:id', protect, async (req, res) => {
+  try {
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(req.params.id)) {
+      return res.status(400).json({ error: 'Invalid group ID format' });
+    }
+
+    const group = await Group.findOne({
+      where: { 
+        id: req.params.id,
+        ownerId: req.user.id
+      },
+      include: [{
+        model: Participant,
+        include: [{ model: Participant, as: 'secretSantaFor' }]
+      }]
+    });
+    if (!group) {
+      return res.status(404).json({ error: 'Group not found' });
+    }
+    res.json(group);
+  } catch (error) {
+    console.error('Error fetching group:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update a group
+router.put('/:id', protect, async (req, res) => {
+  try {
+    const group = await Group.findOne({
+      where: { 
+        id: req.params.id,
+        ownerId: req.user.id
+      }
+    });
+    if (!group) {
+      return res.status(404).json({ error: 'Group not found' });
+    }
+    await group.update(req.body);
+    res.json(group);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// Delete a group
+router.delete('/:id', protect, async (req, res) => {
+  try {
+    const group = await Group.findOne({
+      where: { 
+        id: req.params.id,
+        ownerId: req.user.id
+      }
+    });
+    if (!group) {
+      return res.status(404).json({ error: 'Group not found' });
+    }
+    await group.destroy();
+    res.status(204).send();
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Perform the Secret Santa draw for a group
 router.post('/:id/draw', protect, async (req, res) => {
   try {
     const group = await Group.findOne({
       where: { 
         id: req.params.id,
-        adminId: req.admin.id
+        ownerId: req.user.id
       },
       include: [{ model: Participant }]
     });
@@ -123,122 +173,6 @@ router.post('/:id/draw', protect, async (req, res) => {
   }
 });
 
-// Get a specific group with its participants (admin only)
-router.get('/:id', protect, async (req, res) => {
-  try {
-    // Validate UUID format
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-    if (!uuidRegex.test(req.params.id)) {
-      return res.status(400).json({ error: 'Invalid group ID format' });
-    }
-
-    const group = await Group.findOne({
-      where: { 
-        id: req.params.id,
-        adminId: req.admin.id
-      },
-      include: [{
-        model: Participant,
-        include: [{ model: Participant, as: 'secretSantaFor' }]
-      }]
-    });
-    if (!group) {
-      return res.status(404).json({ error: 'Group not found' });
-    }
-    res.json(group);
-  } catch (error) {
-    console.error('Error fetching group:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Update a group (admin only)
-router.put('/:id', protect, async (req, res) => {
-  try {
-    const group = await Group.findOne({
-      where: { 
-        id: req.params.id,
-        adminId: req.admin.id
-      }
-    });
-    if (!group) {
-      return res.status(404).json({ error: 'Group not found' });
-    }
-    await group.update(req.body);
-    res.json(group);
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-});
-
-// Delete a group (admin only)
-router.delete('/:id', protect, async (req, res) => {
-  try {
-    const group = await Group.findOne({
-      where: { 
-        id: req.params.id,
-        adminId: req.admin.id
-      }
-    });
-    if (!group) {
-      return res.status(404).json({ error: 'Group not found' });
-    }
-    await group.destroy();
-    res.status(204).send();
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Resend assignment email for a specific participant
-router.post('/:groupId/participants/:participantId/resend-email', protect, async (req, res) => {
-  try {
-    const group = await Group.findOne({
-      where: { 
-        id: req.params.groupId,
-        adminId: req.admin.id
-      }
-    });
-
-    if (!group) {
-      return res.status(404).json({ error: 'Group not found' });
-    }
-
-    const participant = await Participant.findOne({
-      where: { 
-        id: req.params.participantId,
-        groupId: req.params.groupId
-      },
-      include: [{ 
-        model: Participant, 
-        as: 'secretSantaFor' 
-      }]
-    });
-
-    if (!participant) {
-      return res.status(404).json({ error: 'Participant not found' });
-    }
-
-    if (!participant.assignedToId) {
-      return res.status(400).json({ error: 'This participant has not been assigned yet' });
-    }
-
-    // Send the email
-    await sendAssignmentEmail({
-      to: participant.email,
-      giverName: participant.name,
-      receiverName: participant.secretSantaFor.name,
-      groupName: group.name,
-      participantId: participant.id
-    });
-
-    res.json({ message: 'Assignment email sent successfully' });
-  } catch (error) {
-    console.error('Error resending email:', error);
-    res.status(500).json({ error: 'Failed to send email' });
-  }
-});
-
 // Helper function to perform the Secret Santa draw
 function performSecretSantaDraw(participants) {
   const maxAttempts = 100; // Prevent infinite loops
@@ -294,32 +228,5 @@ function performSecretSantaDraw(participants) {
     }
   }
 }
-
-// Create a new group
-router.post('/', protect, async (req, res) => {
-  try {
-    const group = await Group.create({
-      ...req.body,
-      ownerId: req.user.id
-    });
-    res.status(201).json(group);
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-});
-
-// Get user's groups
-router.get('/my-groups', protect, async (req, res) => {
-  try {
-    const groups = await Group.findAll({
-      where: { ownerId: req.user.id },
-      order: [['createdAt', 'DESC']]
-    });
-    res.json(groups);
-  } catch (error) {
-    console.error('Error fetching groups:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
 
 module.exports = router; 

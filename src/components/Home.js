@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import moment from 'moment-jalaali';
 
 function Home() {
   const [groups, setGroups] = useState([]);
@@ -37,6 +38,11 @@ function Home() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const formatDate = (date) => {
+    if (!date) return '';
+    return moment(date).format('jYYYY/jMM/jDD');
   };
 
   if (!isAuthenticated) {
@@ -117,7 +123,7 @@ function Home() {
                 </div>
                 {group.drawDate && (
                   <p className="text-sm text-gray-500 mt-2">
-                    تاریخ قرعه‌کشی: {new Date(group.drawDate).toLocaleDateString('fa-IR')}
+                    تاریخ قرعه‌کشی: {formatDate(group.drawDate)}
                   </p>
                 )}
               </Link>
