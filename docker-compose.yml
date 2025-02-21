@@ -1,0 +1,131 @@
+version: '3.8'
+
+services:
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - /etc/letsencrypt/live/xbuddy.smartxdev.com/fullchain.pem:/etc/nginx/ssl/fullchain.pem:ro
+      - /etc/letsencrypt/live/xbuddy.smartxdev.com/privkey.pem:/etc/nginx/ssl/privkey.pem:ro
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - app-network
+
+  mailserver:
+    image: tvial/docker-mailserver:latest
+    hostname: mail.eydibede.ir
+    domainname: eydibede.ir
+    container_name: mailserver
+    ports:
+      - "25:25"    # SMTP
+      - "465:465"  # SMTPS
+      - "587:587"  # Submission
+      - "993:993"  # IMAPS
+    volumes:
+      - ./mailserver/mail-data:/var/mail
+      - ./mailserver/mail-state:/var/mail-state
+      - ./mailserver/mail-logs:/var/log/mail
+      - ./mailserver/config:/tmp/docker-mailserver
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+    environment:
+      - SSL_TYPE=letsencrypt
+      - SSL_CERT_PATH=/etc/letsencrypt/live/mail.eydibede.ir/fullchain.pem
+      - SSL_KEY_PATH=/etc/letsencrypt/live/mail.eydibede.ir/privkey.pem
+      - PERMIT_DOCKER=network
+      - ONE_DIR=1
+      - DMS_DEBUG=0
+      - ENABLE_SPAMASSASSIN=1
+      - ENABLE_CLAMAV=1
+      - ENABLE_FAIL2BAN=1
+      - ENABLE_POSTGREY=1
+      - POSTMASTER_ADDRESS=admin@eydibede.ir
+      - POSTSCREEN_ACTION=enforce
+      - SMTP_ONLY=0
+      - SSL_TYPE=letsencrypt
+      - TLS_LEVEL=intermediate
+    cap_add:
+      - NET_ADMIN
+      - SYS_PTRACE
+    restart: always
+    stop_grace_period: 1m
+    networks:
+      - app-network
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    expose:
+      - "3000"
+    volumes:
+      - ./src:/app/src
+      - ./public:/app/public
+      - /app/node_modules
+    environment:
+      - REACT_APP_API_URL=https://xbuddy.smartxdev.com
+    depends_on:
+      - backend
+    networks:
+      - app-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    expose:
+      - "4000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:secretsanta@db:5437/secretsanta
+      - NODE_ENV=development
+      - PORT=4000
+      - JWT_SECRET=your-secret-key-here
+      - FRONTEND_URL=https://xbuddy.smartxdev.com
+      - SMTP_HOST=mailserver
+      - SMTP_PORT=587
+      - SMTP_USER=noreply@eydibede.ir
+      - SMTP_PASS=${SMTP_PASSWORD}
+      - SMTP_SECURE=false
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    depends_on:
+      db:
+        condition: service_healthy
+      mailserver:
+        condition: service_started
+    networks:
+      - app-network
+
+  db:
+    image: postgres:15-alpine
+    expose:
+      - "5437"
+    command: -p 5437
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d secretsanta -p 5437"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=secretsanta
+      - POSTGRES_DB=secretsanta
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  mail-data:
+  mail-state:
+  mail-logs: 
