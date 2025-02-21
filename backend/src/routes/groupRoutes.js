@@ -36,6 +36,8 @@ router.get('/my-groups', protect, async (req, res) => {
 // Get a specific group with its participants
 router.get('/:id', protect, async (req, res) => {
   try {
+    console.log('Fetching group:', req.params.id); // Add logging
+
     const group = await Group.findOne({
       where: { 
         id: req.params.id,
@@ -43,17 +45,50 @@ router.get('/:id', protect, async (req, res) => {
       },
       include: [{
         model: Participant,
-        include: [{ model: Participant, as: 'secretSantaFor' }]
+        attributes: ['id', 'name', 'email', 'assignedToId'],
+        include: [{ 
+          model: Participant, 
+          as: 'secretSantaFor',
+          attributes: ['id', 'name', 'email']
+        }]
       }]
     });
     
     if (!group) {
-      return res.status(404).json({ error: 'Group not found' });
+      return res.status(404).json({ message: 'Group not found' });
     }
-    res.json(group);
+
+    // Format the response
+    const response = {
+      id: group.id,
+      name: group.name,
+      description: group.description,
+      drawDate: group.drawDate,
+      budget: group.budget,
+      currency: group.currency,
+      status: group.status,
+      participantViewAccess: group.participantViewAccess,
+      messageViewAccess: group.messageViewAccess,
+      wishlistViewAccess: group.wishlistViewAccess,
+      participants: group.Participants.map(p => ({
+        id: p.id,
+        name: p.name,
+        email: p.email,
+        assignedTo: p.secretSantaFor ? {
+          id: p.secretSantaFor.id,
+          name: p.secretSantaFor.name,
+          email: p.secretSantaFor.email
+        } : null
+      }))
+    };
+
+    res.json(response);
   } catch (error) {
     console.error('Error fetching group:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ 
+      message: 'Error fetching group details',
+      details: error.message 
+    });
   }
 });
 

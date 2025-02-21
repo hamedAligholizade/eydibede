@@ -9,7 +9,15 @@ const { v4: uuidv4 } = require('uuid');
 // Add participant to a group (admin only)
 router.post('/', protect, async (req, res) => {
   try {
+    console.log('Received request body:', req.body); // Add logging
     const { groupId, name, email } = req.body;
+
+    if (!groupId || !name || !email) {
+      return res.status(400).json({ 
+        message: 'Missing required fields',
+        details: 'groupId, name, and email are required'
+      });
+    }
 
     // Validate group exists and user has access
     const group = await Group.findOne({
@@ -37,16 +45,34 @@ router.post('/', protect, async (req, res) => {
     res.status(201).json(participant);
   } catch (error) {
     console.error('Add participant error:', error);
-    res.status(400).json({ message: error.message });
+    res.status(400).json({ 
+      message: 'Error adding participant',
+      details: error.message 
+    });
   }
 });
 
 // Bulk add participants to a group (admin only)
 router.post('/group/:groupId/bulk', protect, async (req, res) => {
-  const { groupId } = req.params;
-  const { participants } = req.body;
-
   try {
+    console.log('Received bulk request body:', req.body); // Add logging
+    const { groupId } = req.params;
+    const { participants } = req.body;
+
+    if (!groupId) {
+      return res.status(400).json({ 
+        message: 'Missing group ID',
+        details: 'Group ID is required in the URL'
+      });
+    }
+
+    if (!participants || !Array.isArray(participants)) {
+      return res.status(400).json({ 
+        message: 'Invalid participants data',
+        details: 'Participants must be provided as an array'
+      });
+    }
+
     // Validate group exists and user has access
     const group = await Group.findOne({
       where: { 
@@ -63,19 +89,13 @@ router.post('/group/:groupId/bulk', protect, async (req, res) => {
       return res.status(400).json({ message: 'Cannot add participants after draw has been performed' });
     }
 
-    // Validate participants data
-    if (!Array.isArray(participants)) {
-      return res.status(400).json({ message: 'Participants must be an array' });
-    }
-
-    if (participants.length === 0) {
-      return res.status(400).json({ message: 'No participants provided' });
-    }
-
     // Validate each participant has required fields
     for (const p of participants) {
       if (!p.name || !p.email) {
-        return res.status(400).json({ message: 'Each participant must have a name and email' });
+        return res.status(400).json({ 
+          message: 'Invalid participant data',
+          details: 'Each participant must have a name and email'
+        });
       }
     }
 

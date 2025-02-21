@@ -135,7 +135,7 @@ function Home() {
             {groups.map(group => (
               <Link
                 key={group.id}
-                to={`/group/${group.id}`}
+                to={`/groups/${group.id}`}
                 className="block p-4 border rounded hover:bg-gray-50 transition-colors"
               >
                 <div className="flex justify-between items-start">

@@ -78,14 +78,17 @@ function CreateGroup() {
             throw new Error('هیچ شرکت‌کننده‌ای در فایل CSV یافت نشد.');
           }
 
+          console.log('Parsed participants:', parsedParticipants);
           setParticipants(parsedParticipants);
           setError('');
         } catch (error) {
+          console.error('CSV parsing error:', error);
           setError(error.message);
           setParticipants([]);
         }
       };
       reader.onerror = () => {
+        console.error('File reading error');
         setError('خطا در خواندن فایل CSV');
         setParticipants([]);
       };
@@ -126,24 +129,24 @@ function CreateGroup() {
 
       // If we have participants from CSV, add them
       if (participants.length > 0) {
+        console.log('Sending participants:', { participants });
         const participantsResponse = await fetch(`${process.env.REACT_APP_API_URL}/api/participants/group/${groupData.id}/bulk`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
           },
-          body: JSON.stringify({
-            participants: participants
-          }),
+          body: JSON.stringify({ participants })
         });
 
         if (!participantsResponse.ok) {
           const errorData = await participantsResponse.json();
-          throw new Error(errorData.message || 'خطا در افزودن شرکت‌کنندگان');
+          console.error('Participants error:', errorData);
+          throw new Error(errorData.message || errorData.details || 'خطا در افزودن شرکت‌کنندگان');
         }
       }
 
-      navigate(`/group/${groupData.id}`);
+      navigate(`/groups/${groupData.id}`);
     } catch (error) {
       console.error('Submit error:', error);
       setError(error.message || 'خطای ناشناخته در ایجاد گروه');
