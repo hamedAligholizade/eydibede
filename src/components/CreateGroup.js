@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import moment from 'moment-jalaali';
 
+moment.loadPersian({ dialect: 'persian-modern' });
+
 function CreateGroup() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
@@ -96,14 +98,22 @@ function CreateGroup() {
     }
   };
 
+  const formatToJalali = (date) => {
+    return moment(date).format('jYYYY/jMM/jDD');
+  };
+
+  const formatToGregorian = (jalaliDate) => {
+    return moment(jalaliDate, 'jYYYY/jMM/jDD').format('YYYY-MM-DD');
+  };
+
   return (
     <div className="max-w-2xl mx-auto">
       <div className="bg-white rounded-lg shadow-md p-6">
         <h2 className="text-2xl font-bold mb-6">ایجاد گروه جدید</h2>
 
         {error && (
-          <div className="mb-4 bg-red-50 border-r-4 border-red-400 p-4">
-            <p className="text-red-700">{error}</p>
+          <div className="mb-4 bg-red-50 border-r-4 border-[#00B100] p-4">
+            <p className="text-[#00B100]">{error}</p>
           </div>
         )}
 
@@ -120,6 +130,7 @@ function CreateGroup() {
               value={formData.name}
               onChange={handleChange}
               className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-[#00B100] focus:border-[#00B100]"
+              placeholder="مثال: عید ۱۴۰۳"
             />
           </div>
 
@@ -134,6 +145,7 @@ function CreateGroup() {
               value={formData.description}
               onChange={handleChange}
               className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-[#00B100] focus:border-[#00B100]"
+              placeholder="توضیحات گروه را وارد کنید"
             />
           </div>
 
@@ -147,9 +159,12 @@ function CreateGroup() {
                 id="budget"
                 name="budget"
                 required
+                min="0"
+                step="1000"
                 value={formData.budget}
                 onChange={handleChange}
                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-[#00B100] focus:border-[#00B100]"
+                placeholder="مثال: ۵۰۰۰۰۰"
               />
             </div>
 
@@ -185,6 +200,9 @@ function CreateGroup() {
               min={moment().format('YYYY-MM-DD')}
               className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-[#00B100] focus:border-[#00B100]"
             />
+            <p className="mt-1 text-sm text-gray-500">
+              تاریخ انتخاب شده: {formatToJalali(formData.drawDate)}
+            </p>
           </div>
 
           <button

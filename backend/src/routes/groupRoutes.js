@@ -36,12 +36,6 @@ router.get('/my-groups', protect, async (req, res) => {
 // Get a specific group with its participants
 router.get('/:id', protect, async (req, res) => {
   try {
-    // Validate UUID format
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-    if (!uuidRegex.test(req.params.id)) {
-      return res.status(400).json({ error: 'Invalid group ID format' });
-    }
-
     const group = await Group.findOne({
       where: { 
         id: req.params.id,
@@ -52,6 +46,7 @@ router.get('/:id', protect, async (req, res) => {
         include: [{ model: Participant, as: 'secretSantaFor' }]
       }]
     });
+    
     if (!group) {
       return res.status(404).json({ error: 'Group not found' });
     }
