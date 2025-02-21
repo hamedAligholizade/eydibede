@@ -68,6 +68,10 @@ Group.associate = (models) => {
     foreignKey: 'ownerId',
     as: 'owner'
   });
+  Group.hasMany(models.Payment, {
+    foreignKey: 'groupId',
+    as: 'payments'
+  });
 };
 
 module.exports = Group; 

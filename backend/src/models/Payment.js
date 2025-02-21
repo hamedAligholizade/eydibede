@@ -92,10 +92,12 @@ Payment.beforeCreate(async (payment) => {
 // Define associations
 Payment.associate = (models) => {
   Payment.belongsTo(models.Group, {
-    foreignKey: 'groupId'
+    foreignKey: 'groupId',
+    as: 'Group'
   });
   Payment.belongsTo(models.User, {
-    foreignKey: 'userId'
+    foreignKey: 'userId',
+    as: 'User'
   });
 };
 
