@@ -31,14 +31,24 @@ const Participant = sequelize.define('Participant', {
     allowNull: true
   },
   wishList: {
-    type: DataTypes.JSONB,
-    defaultValue: [],
+    type: DataTypes.TEXT,
+    defaultValue: '[]',
     get() {
       const rawValue = this.getDataValue('wishList');
-      return rawValue ? JSON.parse(rawValue) : [];
+      try {
+        return rawValue ? JSON.parse(rawValue) : [];
+      } catch (error) {
+        console.error('Error parsing wishList:', error);
+        return [];
+      }
     },
     set(value) {
-      this.setDataValue('wishList', JSON.stringify(value));
+      try {
+        this.setDataValue('wishList', JSON.stringify(value || []));
+      } catch (error) {
+        console.error('Error setting wishList:', error);
+        this.setDataValue('wishList', '[]');
+      }
     }
   },
   secretMessage: {

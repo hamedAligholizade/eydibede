@@ -39,10 +39,22 @@ router.post('/', protect, async (req, res) => {
       id: uuidv4(),
       name,
       email,
-      groupId
+      groupId,
+      wishList: '[]', // Initialize with empty array as string
+      excludeList: [] // Initialize with empty array
     });
 
-    res.status(201).json(participant);
+    // Format the response to avoid JSON parsing issues
+    const formattedParticipant = {
+      id: participant.id,
+      name: participant.name,
+      email: participant.email,
+      groupId: participant.groupId,
+      wishList: [],
+      excludeList: []
+    };
+
+    res.status(201).json(formattedParticipant);
   } catch (error) {
     console.error('Add participant error:', error);
     res.status(400).json({ 
@@ -55,7 +67,7 @@ router.post('/', protect, async (req, res) => {
 // Bulk add participants to a group (admin only)
 router.post('/group/:groupId/bulk', protect, async (req, res) => {
   try {
-    console.log('Received bulk request body:', req.body); // Add logging
+    console.log('Received bulk request body:', req.body);
     const { groupId } = req.params;
     const { participants } = req.body;
 
@@ -103,7 +115,9 @@ router.post('/group/:groupId/bulk', protect, async (req, res) => {
     const participantsWithGroup = participants.map(p => ({
       id: uuidv4(),
       ...p,
-      groupId
+      groupId,
+      wishList: '[]', // Initialize with empty array as string
+      excludeList: []
     }));
 
     // Create all participants in bulk
@@ -111,9 +125,19 @@ router.post('/group/:groupId/bulk', protect, async (req, res) => {
       validate: true
     });
 
+    // Format the response to avoid JSON parsing issues
+    const formattedParticipants = createdParticipants.map(p => ({
+      id: p.id,
+      name: p.name,
+      email: p.email,
+      groupId: p.groupId,
+      wishList: [],
+      excludeList: []
+    }));
+
     res.status(201).json({
-      message: `Successfully added ${createdParticipants.length} participants`,
-      participants: createdParticipants
+      message: `Successfully added ${formattedParticipants.length} participants`,
+      participants: formattedParticipants
     });
   } catch (error) {
     console.error('Bulk upload error:', error);

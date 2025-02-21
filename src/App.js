@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Home from './components/Home';
 import CreateGroup from './components/CreateGroup';
@@ -8,17 +8,18 @@ import ParticipantDetails from './components/ParticipantDetails';
 import AdminParticipantView from './components/AdminParticipantView';
 import AdminRegistration from './components/AdminRegistration';
 import AdminLogin from './components/AdminLogin';
+import AddParticipant from './components/AddParticipant';
 import './App.css';
 
 function App() {
   const [needsAdminSetup, setNeedsAdminSetup] = useState(false);
   const [checkingSetup, setCheckingSetup] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
   useEffect(() => {
     checkAdminSetup();
-    const token = localStorage.getItem('adminToken');
-    setIsAuthenticated(!!token);
+    checkAuthentication();
   }, []);
 
   const checkAdminSetup = async () => {
@@ -33,15 +34,54 @@ function App() {
     }
   };
 
+  const checkAuthentication = async () => {
+    const token = localStorage.getItem('adminToken');
+    if (!token) {
+      setIsAuthenticated(false);
+      setIsCheckingAuth(false);
+      return;
+    }
+
+    try {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/admin/profile`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        setIsAuthenticated(true);
+      } else {
+        localStorage.removeItem('adminToken');
+        localStorage.removeItem('adminInfo');
+        setIsAuthenticated(false);
+      }
+    } catch (error) {
+      console.error('Auth check error:', error);
+      localStorage.removeItem('adminToken');
+      localStorage.removeItem('adminInfo');
+      setIsAuthenticated(false);
+    } finally {
+      setIsCheckingAuth(false);
+    }
+  };
+
   // Protected Route component
   const ProtectedRoute = ({ children }) => {
-    if (!isAuthenticated) {
-      return <Navigate to="/admin/login" />;
+    const location = useLocation();
+    
+    if (isCheckingAuth) {
+      return <div className="text-center mt-8">در حال بررسی وضعیت ورود...</div>;
     }
+    
+    if (!isAuthenticated) {
+      return <Navigate to="/admin/login" state={{ from: location.pathname }} />;
+    }
+    
     return children;
   };
 
-  if (checkingSetup) {
+  if (checkingSetup || isCheckingAuth) {
     return <div className="text-center mt-8">در حال بارگذاری...</div>;
   }
 
@@ -72,6 +112,11 @@ function App() {
               </ProtectedRoute>
             } />
             <Route path="/participant/:id" element={<ParticipantDetails />} />
+            <Route path="/groups/:id/add-participant" element={
+              <ProtectedRoute>
+                <AddParticipant />
+              </ProtectedRoute>
+            } />
           </Routes>
         </div>
       </div>
