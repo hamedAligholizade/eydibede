@@ -2,8 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import moment from 'moment-jalaali';
 
-moment.loadPersian({ dialect: 'persian-modern' });
-
 function CreateGroup() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
@@ -35,9 +33,7 @@ function CreateGroup() {
       });
 
       if (!response.ok) {
-        localStorage.removeItem('adminToken');
-        localStorage.removeItem('adminInfo');
-        navigate('/admin/login');
+        throw new Error('Authentication failed');
       }
     } catch (error) {
       console.error('Auth check error:', error);
@@ -49,10 +45,18 @@ function CreateGroup() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    if (name === 'drawDate') {
+      // Convert Gregorian to Jalali for display
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -79,13 +83,13 @@ function CreateGroup() {
       });
 
       if (!response.ok) {
+        const data = await response.json();
         if (response.status === 401) {
           localStorage.removeItem('adminToken');
           localStorage.removeItem('adminInfo');
           navigate('/admin/login');
           throw new Error('نشست شما منقضی شده است. لطفا دوباره وارد شوید');
         }
-        const data = await response.json();
         throw new Error(data.error || 'خطا در ایجاد گروه');
       }
 
@@ -98,13 +102,8 @@ function CreateGroup() {
     }
   };
 
-  const formatToJalali = (date) => {
-    return moment(date).format('jYYYY/jMM/jDD');
-  };
-
-  const formatToGregorian = (jalaliDate) => {
-    return moment(jalaliDate, 'jYYYY/jMM/jDD').format('YYYY-MM-DD');
-  };
+  const today = moment().format('YYYY-MM-DD');
+  const maxDate = moment().add(1, 'year').format('YYYY-MM-DD');
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -130,7 +129,6 @@ function CreateGroup() {
               value={formData.name}
               onChange={handleChange}
               className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-[#00B100] focus:border-[#00B100]"
-              placeholder="مثال: عید ۱۴۰۳"
             />
           </div>
 
@@ -145,7 +143,6 @@ function CreateGroup() {
               value={formData.description}
               onChange={handleChange}
               className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-[#00B100] focus:border-[#00B100]"
-              placeholder="توضیحات گروه را وارد کنید"
             />
           </div>
 
@@ -164,7 +161,6 @@ function CreateGroup() {
                 value={formData.budget}
                 onChange={handleChange}
                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-[#00B100] focus:border-[#00B100]"
-                placeholder="مثال: ۵۰۰۰۰۰"
               />
             </div>
 
@@ -197,12 +193,10 @@ function CreateGroup() {
               required
               value={formData.drawDate}
               onChange={handleChange}
-              min={moment().format('YYYY-MM-DD')}
+              min={today}
+              max={maxDate}
               className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-[#00B100] focus:border-[#00B100]"
             />
-            <p className="mt-1 text-sm text-gray-500">
-              تاریخ انتخاب شده: {formatToJalali(formData.drawDate)}
-            </p>
           </div>
 
           <button
