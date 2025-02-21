@@ -295,4 +295,31 @@ function performSecretSantaDraw(participants) {
   }
 }
 
+// Create a new group
+router.post('/', protect, async (req, res) => {
+  try {
+    const group = await Group.create({
+      ...req.body,
+      ownerId: req.user.id
+    });
+    res.status(201).json(group);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// Get user's groups
+router.get('/my-groups', protect, async (req, res) => {
+  try {
+    const groups = await Group.findAll({
+      where: { ownerId: req.user.id },
+      order: [['createdAt', 'DESC']]
+    });
+    res.json(groups);
+  } catch (error) {
+    console.error('Error fetching groups:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router; 
