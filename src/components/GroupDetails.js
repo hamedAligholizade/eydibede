@@ -8,39 +8,73 @@ function GroupDetails() {
   const [group, setGroup] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [drawInProgress, setDrawInProgress] = useState(false);
 
   useEffect(() => {
-    const fetchGroup = async () => {
-      const token = localStorage.getItem('adminToken');
-      if (!token) {
-        navigate('/admin/login', { state: { from: `/groups/${id}` } });
-        return;
-      }
-
-      try {
-        const response = await fetch(`${process.env.REACT_APP_API_URL}/api/groups/${id}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || errorData.details || 'خطا در دریافت اطلاعات گروه');
-        }
-
-        const data = await response.json();
-        setGroup(data);
-      } catch (error) {
-        console.error('Error fetching group:', error);
-        setError(error.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchGroup();
   }, [id, navigate]);
+
+  const fetchGroup = async () => {
+    const token = localStorage.getItem('adminToken');
+    if (!token) {
+      navigate('/admin/login', { state: { from: `/groups/${id}` } });
+      return;
+    }
+
+    try {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/groups/${id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || errorData.details || 'خطا در دریافت اطلاعات گروه');
+      }
+
+      const data = await response.json();
+      setGroup(data);
+    } catch (error) {
+      console.error('Error fetching group:', error);
+      setError(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDraw = async () => {
+    if (!window.confirm('آیا از شروع قرعه‌کشی مطمئن هستید؟ این عمل قابل برگشت نیست.')) {
+      return;
+    }
+
+    setDrawInProgress(true);
+    setError('');
+
+    try {
+      const token = localStorage.getItem('adminToken');
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/groups/${id}/draw`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || errorData.details || 'خطا در انجام قرعه‌کشی');
+      }
+
+      const data = await response.json();
+      alert('قرعه‌کشی با موفقیت انجام شد! ایمیل‌های اطلاع‌رسانی در حال ارسال هستند.');
+      fetchGroup(); // Refresh group data
+    } catch (error) {
+      console.error('Draw error:', error);
+      setError(error.message);
+    } finally {
+      setDrawInProgress(false);
+    }
+  };
 
   const formatDate = (date) => {
     if (!date) return '';
@@ -158,10 +192,13 @@ function GroupDetails() {
         {group.status === 'pending' && group.participants && group.participants.length >= 3 && (
           <div className="mt-6 border-t pt-6">
             <button
-              className="w-full bg-[#00B100] text-white py-3 rounded-md hover:bg-[#009100] transition-colors"
-              onClick={() => {/* TODO: Implement draw functionality */}}
+              className={`w-full bg-[#00B100] text-white py-3 rounded-md hover:bg-[#009100] transition-colors ${
+                drawInProgress ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
+              onClick={handleDraw}
+              disabled={drawInProgress}
             >
-              شروع قرعه‌کشی
+              {drawInProgress ? 'در حال انجام قرعه‌کشی...' : 'شروع قرعه‌کشی'}
             </button>
           </div>
         )}

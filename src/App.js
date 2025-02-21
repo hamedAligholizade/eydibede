@@ -61,12 +61,12 @@ function App() {
                 <CreateGroup />
               </ProtectedRoute>
             } />
-            <Route path="/group/:id" element={
+            <Route path="/groups/:id" element={
               <ProtectedRoute>
                 <GroupDetails />
               </ProtectedRoute>
             } />
-            <Route path="/group/:groupId/participant/:participantId" element={
+            <Route path="/groups/:groupId/participant/:participantId" element={
               <ProtectedRoute>
                 <AdminParticipantView />
               </ProtectedRoute>
