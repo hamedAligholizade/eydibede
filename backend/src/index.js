@@ -4,6 +4,7 @@ const { sequelize } = require('./config/database');
 const adminRoutes = require('./routes/adminRoutes');
 const groupRoutes = require('./routes/groupRoutes');
 const participantRoutes = require('./routes/participantRoutes');
+const testRoutes = require('./routes/testRoutes');
 require('./services/promotionService'); // This will initialize the promotion service
 
 const app = express();
@@ -17,6 +18,7 @@ app.use(express.json());
 app.use('/api/admin', adminRoutes);
 app.use('/api/groups', groupRoutes);
 app.use('/api/participants', participantRoutes);
+app.use('/api/test', testRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
