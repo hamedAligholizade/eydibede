@@ -1,19 +1,45 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import moment from 'moment-jalaali';
 
 function Home() {
+  const navigate = useNavigate();
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    const token = localStorage.getItem('adminToken');
-    setIsAuthenticated(!!token);
-    if (token) {
-      fetchUserGroups(token);
-    }
+    const checkAuthAndFetchGroups = async () => {
+      const token = localStorage.getItem('adminToken');
+      if (!token) {
+        setIsAuthenticated(false);
+        return;
+      }
+
+      try {
+        // Verify token
+        const authResponse = await fetch(`${process.env.REACT_APP_API_URL}/api/admin/profile`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (!authResponse.ok) {
+          throw new Error('Token verification failed');
+        }
+
+        setIsAuthenticated(true);
+        fetchUserGroups(token);
+      } catch (error) {
+        console.error('Auth check error:', error);
+        localStorage.removeItem('adminToken');
+        localStorage.removeItem('adminInfo');
+        setIsAuthenticated(false);
+      }
+    };
+
+    checkAuthAndFetchGroups();
   }, []);
 
   const fetchUserGroups = async (token) => {
@@ -38,6 +64,14 @@ function Home() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCreateGroup = () => {
+    if (!isAuthenticated) {
+      navigate('/admin/login', { state: { from: '/create-group' } });
+      return;
+    }
+    navigate('/create-group');
   };
 
   const formatDate = (date) => {
@@ -77,12 +111,12 @@ function Home() {
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold">گروه‌های عیدی بده شما</h2>
-          <Link
-            to="/create-group"
+          <button
+            onClick={handleCreateGroup}
             className="bg-[#00B100] text-white px-4 py-2 rounded hover:bg-[#009100] transition-colors"
           >
             ایجاد گروه جدید
-          </Link>
+          </button>
         </div>
 
         {error && (
