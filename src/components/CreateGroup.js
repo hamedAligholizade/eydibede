@@ -126,14 +126,13 @@ function CreateGroup() {
 
       // If we have participants from CSV, add them
       if (participants.length > 0) {
-        const participantsResponse = await fetch(`${process.env.REACT_APP_API_URL}/api/participants/bulk`, {
+        const participantsResponse = await fetch(`${process.env.REACT_APP_API_URL}/api/participants/group/${groupData.id}/bulk`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
           },
           body: JSON.stringify({
-            groupId: groupData.id,
             participants: participants
           }),
         });

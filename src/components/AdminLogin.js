@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 function AdminLogin() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -34,7 +35,7 @@ function AdminLogin() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'ورود ناموفق');
+        throw new Error(data.message || 'ورود ناموفق');
       }
 
       localStorage.setItem('adminToken', data.token);
@@ -44,7 +45,9 @@ function AdminLogin() {
         email: data.email
       }));
 
-      navigate('/');
+      // Navigate to the return URL if it exists, otherwise go to home
+      const returnTo = location.state?.from || '/';
+      navigate(returnTo, { replace: true });
     } catch (error) {
       setError(error.message);
     } finally {
@@ -59,15 +62,15 @@ function AdminLogin() {
           ورود مدیر
         </h2>
         <p className="mt-2 text-center text-sm text-gray-600">
-          برای مدیریت گروه‌های X Buddy وارد شوید
+          برای مدیریت گروه‌های عیدی بده وارد شوید
         </p>
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
           {error && (
-            <div className="mb-4 bg-red-50 border-r-4 border-[#00B100] p-4">
-              <p className="text-[#00B100]">{error}</p>
+            <div className="mb-4 bg-red-50 border-r-4 border-red-400 p-4">
+              <p className="text-red-700">{error}</p>
             </div>
           )}
 
