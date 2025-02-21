@@ -30,31 +30,31 @@ app.use((err, req, res, next) => {
 async function initializeDatabase() {
   try {
     // Import models
-    const Admin = require('./models/Admin');
+    const User = require('./models/User');
     const Group = require('./models/Group');
     const Participant = require('./models/Participant');
     const Message = require('./models/Message');
 
     // Define associations
-    Admin.hasMany(Group, { foreignKey: 'adminId' });
-    Group.belongsTo(Admin, { foreignKey: 'adminId' });
+    User.hasMany(Group, { foreignKey: 'ownerId' });
+    Group.belongsTo(User, { foreignKey: 'ownerId', as: 'owner' });
     
     Group.hasMany(Participant, { foreignKey: 'groupId' });
     Participant.belongsTo(Group, { foreignKey: 'groupId' });
     
     // Secret Santa assignment association
     Participant.belongsTo(Participant, { 
-      as: 'secretSantaFor',  // Changed from 'assignedTo'
+      as: 'secretSantaFor',
       foreignKey: 'assignedToId' 
     });
     
-    // Message associations with different aliases
+    // Message associations
     Message.belongsTo(Participant, { 
       as: 'sender',
       foreignKey: 'fromParticipantId'
     });
     Message.belongsTo(Participant, { 
-      as: 'recipient',  // Changed from 'receiver'
+      as: 'recipient',
       foreignKey: 'toParticipantId'
     });
     Message.belongsTo(Group, { foreignKey: 'groupId' });

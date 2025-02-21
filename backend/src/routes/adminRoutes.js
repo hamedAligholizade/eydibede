@@ -1,100 +1,98 @@
 const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
-const Admin = require('../models/Admin');
-const { protect, isFirstSetup } = require('../middleware/auth');
+const User = require('../models/User');
+const { protect } = require('../middleware/auth');
 
-// Generate JWT Token
-const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, {
-    expiresIn: '30d',
-  });
-};
-
-// Register first admin (only works once)
-router.post('/register', isFirstSetup, async (req, res) => {
+// Register a new admin
+router.post('/register', async (req, res) => {
   try {
-    const { name, email, password } = req.body;
-    const admin = await Admin.create({
-      name,
+    const { email, password, name } = req.body;
+
+    // Check if admin already exists
+    const userExists = await User.findOne({ where: { email } });
+    if (userExists) {
+      return res.status(400).json({ message: 'User already exists' });
+    }
+
+    // Create admin
+    const user = await User.create({
       email,
       password,
-      isFirstAdmin: true
+      name
     });
 
+    // Generate token
+    const token = jwt.sign(
+      { id: user.id },
+      process.env.JWT_SECRET,
+      { expiresIn: '30d' }
+    );
+
     res.status(201).json({
-      id: admin.id,
-      name: admin.name,
-      email: admin.email,
-      token: generateToken(admin.id)
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      token
     });
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    console.error('Admin registration error:', error);
+    res.status(500).json({ message: 'Error registering user' });
   }
 });
 
-// Admin login
+// Login admin
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
-    const admin = await Admin.findOne({ where: { email } });
 
-    if (admin && (await admin.matchPassword(password))) {
-      res.json({
-        id: admin.id,
-        name: admin.name,
-        email: admin.email,
-        token: generateToken(admin.id)
-      });
-    } else {
-      res.status(401).json({ error: 'Invalid email or password' });
+    // Find admin
+    const user = await User.findOne({ where: { email } });
+    if (!user) {
+      return res.status(401).json({ message: 'Invalid credentials' });
     }
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-});
 
-// Check if first admin needs to be created
-router.get('/check-setup', async (req, res) => {
-  try {
-    const adminCount = await Admin.count();
-    res.json({ needsSetup: adminCount === 0 });
+    // Check password
+    const isMatch = await user.matchPassword(password);
+    if (!isMatch) {
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
+
+    // Generate token
+    const token = jwt.sign(
+      { id: user.id },
+      process.env.JWT_SECRET,
+      { expiresIn: '30d' }
+    );
+
+    res.json({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      token
+    });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Admin login error:', error);
+    res.status(500).json({ message: 'Error logging in' });
   }
 });
 
 // Get admin profile
 router.get('/profile', protect, async (req, res) => {
   try {
-    const admin = await Admin.findByPk(req.admin.id);
+    const user = await User.findByPk(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
     res.json({
-      id: admin.id,
-      name: admin.name,
-      email: admin.email
+      id: user.id,
+      name: user.name,
+      email: user.email
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Test email configuration
-router.post('/test-email', protect, async (req, res) => {
-  try {
-    const { sendAssignmentEmail } = require('../utils/email');
-    
-    await sendAssignmentEmail({
-      to: req.admin.email,
-      giverName: 'Test User',
-      receiverName: 'Test Recipient',
-      groupName: 'Test Group',
-      participantId: '00000000-0000-0000-0000-000000000000'
-    });
-
-    res.json({ message: 'Test email sent successfully' });
-  } catch (error) {
-    console.error('Email test error:', error);
-    res.status(500).json({ error: error.message });
+    console.error('Get profile error:', error);
+    res.status(500).json({ message: 'Error getting profile' });
   }
 });
 

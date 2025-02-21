@@ -5,6 +5,12 @@ function Home() {
   const [groups, setGroups] = useState([]);
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    const token = localStorage.getItem('adminToken');
+    setIsAuthenticated(!!token);
+  }, []);
 
   const fetchGroups = async () => {
     if (!email) return;
@@ -20,60 +26,62 @@ function Home() {
     setLoading(false);
   };
 
+  if (!isAuthenticated) {
+    return (
+      <div className="max-w-4xl mx-auto text-center">
+        <div className="bg-white rounded-lg shadow-md p-8 mb-6">
+          <h1 className="text-4xl font-bold mb-6">به X Buddy خوش آمدید</h1>
+          <p className="text-xl mb-8">
+            برای مدیریت گروه‌های X Buddy و ایجاد گروه جدید، لطفا وارد شوید یا ثبت نام کنید.
+          </p>
+          <div className="flex justify-center gap-4">
+            <Link
+              to="/admin/login"
+              className="bg-[#00B100] text-white px-6 py-3 rounded-lg hover:bg-[#009100] transition-colors"
+            >
+              ورود به سیستم
+            </Link>
+            <Link
+              to="/admin/register"
+              className="bg-white text-[#00B100] border-2 border-[#00B100] px-6 py-3 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              ثبت نام
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-4xl mx-auto">
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-        <h2 className="text-2xl font-bold mb-4">Find Your Secret Santa Groups</h2>
-        <div className="flex gap-4">
-          <input
-            type="email"
-            placeholder="Enter your email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="flex-1 p-2 border rounded"
-          />
-          <button
-            onClick={fetchGroups}
-            className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
-          >
-            Find Groups
-          </button>
+        <h2 className="text-2xl font-bold mb-4">گروه‌های X Buddy شما</h2>
+        <Link
+          to="/create-group"
+          className="bg-[#00B100] text-white px-4 py-2 rounded hover:bg-[#009100] mb-4 inline-block"
+        >
+          ایجاد گروه جدید
+        </Link>
+        <div className="mt-4">
+          {groups.length > 0 ? (
+            <div className="grid gap-4">
+              {groups.map(group => (
+                <Link
+                  key={group.id}
+                  to={`/group/${group.id}`}
+                  className="block p-4 border rounded hover:bg-gray-50"
+                >
+                  <h3 className="font-bold">{group.name}</h3>
+                  <p className="text-gray-600">{group.description}</p>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <p className="text-gray-600">هنوز گروهی ایجاد نکرده‌اید.</p>
+          )}
         </div>
       </div>
-
-      {loading ? (
-        <div className="text-center">Loading...</div>
-      ) : groups.length > 0 ? (
-        <div className="grid gap-4 md:grid-cols-2">
-          {groups.map((group) => (
-            <Link
-              key={group.id}
-              to={`/group/${group.id}`}
-              className="block bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow"
-            >
-              <h3 className="text-xl font-semibold mb-2">{group.name}</h3>
-              <p className="text-gray-600 mb-2">{group.description}</p>
-              <div className="flex justify-between items-center text-sm text-gray-500">
-                <span>Budget: ${group.budget} {group.currency}</span>
-                <span className={`px-2 py-1 rounded ${
-                  group.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                  group.status === 'drawn' ? 'bg-green-100 text-green-800' :
-                  'bg-blue-100 text-blue-800'
-                }`}>
-                  {group.status.charAt(0).toUpperCase() + group.status.slice(1)}
-                </span>
-              </div>
-            </Link>
-          ))}
-        </div>
-      ) : email ? (
-        <div className="text-center text-gray-600">
-          No groups found for this email.
-          <Link to="/create-group" className="block mt-4 text-red-600 hover:text-red-700">
-            Create a new group
-          </Link>
-        </div>
-      ) : null}
     </div>
   );
 }
